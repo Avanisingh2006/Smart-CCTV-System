@@ -19,13 +19,31 @@ while True:
     if not ret:
         break
 
-    # Run YOLO detection
-    results = model(frame)
+    # Run YOLO detection (people only)
+    results = model(
+        frame,
+        classes=[0],
+        conf=0.5
+    )
 
     # Draw detections on the frame
     annotated_frame = results[0].plot()
 
-    # Display the frame
+    # Count people
+    person_count = len(results[0].boxes)
+
+    # Display the count on the frame
+    cv2.putText(
+        annotated_frame,
+        f"People Count: {person_count}",
+        (20, 40),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 0),
+        2
+    )
+
+    # Show the frame
     cv2.imshow("Smart CCTV - Live Detection", annotated_frame)
 
     # Press 'q' to quit

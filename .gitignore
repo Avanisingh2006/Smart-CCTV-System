@@ -6,3 +6,4 @@ __pycache__/
 *.db
 *.log
 .env
+yolov8n.pt
