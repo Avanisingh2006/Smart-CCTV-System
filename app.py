@@ -1,50 +1,36 @@
-from ultralytics import YOLO
+from email_alert import send_email
+
 import cv2
-import os
-from datetime import datetime
+import config
 
-# Load the YOLO model
-model = YOLO("yolov8n.pt")
+from detector import detect_people
+from utils import play_alarm, save_intrusion
 
-# Create captures folder if it doesn't exist
-os.makedirs("captures", exist_ok=True)
+# Open webcam
+cap = cv2.VideoCapture(config.CAMERA_INDEX)
 
-# Open the webcam
-cap = cv2.VideoCapture(0)
-
-# Check if webcam opened successfully
 if not cap.isOpened():
     print("Error: Could not open webcam.")
     exit()
 
-# This prevents saving hundreds of screenshots
-screenshot_taken = False
+intrusion_active = False
 
 while True:
-    # Read a frame
+
     ret, frame = cap.read()
 
     if not ret:
         break
 
-    # Run YOLO detection (people only)
-    results = model(
-        frame,
-        classes=[0],
-        conf=0.5
-    )
+    results = detect_people(frame)
 
-    # Draw detections
     annotated_frame = results[0].plot()
 
-    # Restricted zone
-    zone_x1, zone_y1 = 100, 100
-    zone_x2, zone_y2 = 500, 400
-
+    # Draw Restricted Zone
     cv2.rectangle(
         annotated_frame,
-        (zone_x1, zone_y1),
-        (zone_x2, zone_y2),
+        (config.ZONE_X1, config.ZONE_Y1),
+        (config.ZONE_X2, config.ZONE_Y2),
         (0, 0, 255),
         2
     )
@@ -52,14 +38,14 @@ while True:
     cv2.putText(
         annotated_frame,
         "Restricted Zone",
-        (zone_x1, zone_y1 - 10),
+        (config.ZONE_X1, config.ZONE_Y1 - 10),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.7,
         (0, 0, 255),
         2
     )
 
-    # Count people
+    # People Count
     person_count = len(results[0].boxes)
 
     cv2.putText(
@@ -72,51 +58,68 @@ while True:
         2
     )
 
-    intruder_detected = False
+    intruder = False
 
     for box in results[0].boxes:
+
         x1, y1, x2, y2 = map(int, box.xyxy[0])
 
-        center_x = (x1 + x2) // 2
-        center_y = (y1 + y2) // 2
+        cx = (x1 + x2) // 2
+        cy = (y1 + y2) // 2
 
-        cv2.circle(annotated_frame, (center_x, center_y), 5, (255, 0, 0), -1)
+        cv2.circle(
+            annotated_frame,
+            (cx, cy),
+            5,
+            (255, 0, 0),
+            -1
+        )
 
-        if (zone_x1 < center_x < zone_x2) and (zone_y1 < center_y < zone_y2):
-            intruder_detected = True
+        if (
+            config.ZONE_X1 < cx < config.ZONE_X2
+            and
+            config.ZONE_Y1 < cy < config.ZONE_Y2
+        ):
+            intruder = True
 
-    if intruder_detected:
+    if intruder:
+
         cv2.putText(
             annotated_frame,
             "INTRUDER DETECTED!",
-            (100, 80),
+            (80, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             (0, 0, 255),
             3
         )
 
-        # Save only one screenshot per intrusion
-        if not screenshot_taken:
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            filename = f"captures/intruder_{timestamp}.jpg"
+        if not intrusion_active:
 
-            cv2.imwrite(filename, annotated_frame)
-            print(f"Screenshot saved: {filename}")
+            intrusion_active = True
 
-            screenshot_taken = True
+            play_alarm(config.ALARM_SOUND)
+
+            filename = save_intrusion(
+                annotated_frame,
+                config.CAPTURE_FOLDER,
+                config.LOG_FILE
+            )
+
+            if filename:
+                send_email(filename)
 
     else:
-        # Reset after intruder leaves
-        screenshot_taken = False
 
-    # Show the frame
-    cv2.imshow("Smart CCTV - Live Detection", annotated_frame)
+        intrusion_active = False
 
-    # Press 'q' to quit
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    cv2.imshow(
+        "Smart CCTV Surveillance System",
+        annotated_frame
+    )
+
+    if cv2.waitKey(1) == ord("q"):
         break
 
-# Release resources
 cap.release()
 cv2.destroyAllWindows()
