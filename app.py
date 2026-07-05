@@ -1,8 +1,13 @@
 from ultralytics import YOLO
 import cv2
+import os
+from datetime import datetime
 
 # Load the YOLO model
 model = YOLO("yolov8n.pt")
+
+# Create captures folder if it doesn't exist
+os.makedirs("captures", exist_ok=True)
 
 # Open the webcam
 cap = cv2.VideoCapture(0)
@@ -11,6 +16,9 @@ cap = cv2.VideoCapture(0)
 if not cap.isOpened():
     print("Error: Could not open webcam.")
     exit()
+
+# This prevents saving hundreds of screenshots
+screenshot_taken = False
 
 while True:
     # Read a frame
@@ -64,24 +72,19 @@ while True:
         2
     )
 
-    # Check if any person is inside the restricted zone
     intruder_detected = False
 
     for box in results[0].boxes:
         x1, y1, x2, y2 = map(int, box.xyxy[0])
 
-        # Calculate center point of the person
         center_x = (x1 + x2) // 2
         center_y = (y1 + y2) // 2
 
-        # Draw the center point
         cv2.circle(annotated_frame, (center_x, center_y), 5, (255, 0, 0), -1)
 
-        # Check if center point is inside the restricted zone
         if (zone_x1 < center_x < zone_x2) and (zone_y1 < center_y < zone_y2):
             intruder_detected = True
 
-    # Display alert if intruder detected
     if intruder_detected:
         cv2.putText(
             annotated_frame,
@@ -92,6 +95,20 @@ while True:
             (0, 0, 255),
             3
         )
+
+        # Save only one screenshot per intrusion
+        if not screenshot_taken:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            filename = f"captures/intruder_{timestamp}.jpg"
+
+            cv2.imwrite(filename, annotated_frame)
+            print(f"Screenshot saved: {filename}")
+
+            screenshot_taken = True
+
+    else:
+        # Reset after intruder leaves
+        screenshot_taken = False
 
     # Show the frame
     cv2.imshow("Smart CCTV - Live Detection", annotated_frame)
