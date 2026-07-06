@@ -8,3 +8,4 @@ __pycache__/
 .env
 yolov8n.pt
 captures/
+intrusion_log.csv
