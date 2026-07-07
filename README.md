@@ -47,7 +47,7 @@ This project demonstrates the practical application of **Computer Vision** and *
 ## Email Alert
 
 <p align="center">
-<img src="screenshots/email_alert.png" width="850">
+<img src="email_alert.png" width="850">
 </p>
 
 ---
