@@ -1,6 +1,12 @@
 # Camera Settings
 CAMERA_INDEX = 0
 
+# Video File
+VIDEO_PATH = "videos/security_demo.mp4"
+
+# IP Camera
+IP_CAMERA_URL = "rtsp://username:password@192.168.1.10:554/stream"
+
 # YOLO Settings
 CONFIDENCE = 0.5
 

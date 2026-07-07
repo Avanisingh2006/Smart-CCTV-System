@@ -9,3 +9,5 @@ __pycache__/
 yolov8n.pt
 captures/
 intrusion_log.csv
+videos/*.mp4
+captures/
